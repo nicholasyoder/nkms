@@ -4,6 +4,7 @@ import socket
 import json
 from evdev import UInput, ecodes
 from settings import NkmsSettings
+from notify import error_notify, warning_notify
 
 
 class NkmsClient:
@@ -27,7 +28,7 @@ class NkmsClient:
         self.ui = None
 
     def run(self):
-        print('Starting NKMS Client ...')
+        # info_notify('NKMS client started')
         port = int(self.settings.client_port)
         server_address = self.settings.client_server
 
@@ -35,7 +36,12 @@ class NkmsClient:
         self.sock.settimeout(1.0)
 
         try:
-            self.sock.connect((server_address, port))
+            try:
+                self.sock.connect((server_address, port))
+            except TimeoutError:
+                error_notify(f"Failed to connect to {server_address}:{port}")
+                return
+
             self.running = True
 
             data = self.receive_data(50000)
@@ -50,7 +56,8 @@ class NkmsClient:
                 except socket.timeout:
                     continue  # Keep checking self.running regularly
                 except Exception as e:
-                    print(f"Error: {e}")
+                    error_notify("Main loop failed")
+                    print(e)
                     self.running = False
         finally:
             self.cleanup()
@@ -63,7 +70,7 @@ class NkmsClient:
             dev_caps = json.loads(data)
             return {int(k): dev_caps[k] for k in dev_caps.keys()}
         except json.decoder.JSONDecodeError:
-            print('Error: Unable to load device capabilities. Falling back to defaults.')
+            warning_notify('Unable to load device capabilities. Falling back to defaults.')
             return self.default_capabilities
 
     def process_data(self, data):
@@ -73,7 +80,8 @@ class NkmsClient:
                 self.ui.write(j_data[0], j_data[1], j_data[2])
                 self.ui.syn()
             except json.decoder.JSONDecodeError:
-                print('Error: json decode failed')
+                error_notify('JSON decode failed')
+                self.running = False
 
     def stop(self):
         self.running = False
@@ -83,7 +91,7 @@ class NkmsClient:
             self.ui.close()
         if self.sock:
             self.sock.close()
-        print("NKMS Client stopped")
+        # info_notify("NKMS client stopped")
 
 
 if __name__ == '__main__':

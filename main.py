@@ -1,9 +1,10 @@
 import sys
 import threading
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QCursor
 from PyQt6.QtCore import QObject
 from settings import SettingsWindow, NkmsSettings
+from notify import error_notify
 
 
 class NkmsQt(QObject):
@@ -16,38 +17,39 @@ class NkmsQt(QObject):
         self.tray_icon = None
         self.start_action = None
         self.stop_action = None
+        self.tray_menu = None
 
     def initialize(self):
-        # Create the tray icon
-
         # TODO: load icon theme from qt5ctl settings file
         QIcon.setThemeName('Papirus')
-
         icon = QIcon.fromTheme("application-x-executable")
         self.tray_icon = QSystemTrayIcon(icon, self)
 
-        # Create the tray menu
-        tray_menu = QMenu()
-        show_action = tray_menu.addAction("Settings")
+        self.tray_menu = QMenu()
+        show_action = self.tray_menu.addAction("Settings")
         show_action.triggered.connect(self.show_settings)
-        self.start_action = tray_menu.addAction("Start")
+        self.start_action = self.tray_menu.addAction("Start")
         self.start_action.triggered.connect(self.start_nkms)
-        self.stop_action = tray_menu.addAction("Stop")
+        self.stop_action = self.tray_menu.addAction("Stop")
         self.stop_action.triggered.connect(self.stop_nkms)
         self.stop_action.setDisabled(True)
-        quit_action = tray_menu.addAction("Quit")
+        quit_action = self.tray_menu.addAction("Quit")
         quit_action.triggered.connect(QApplication.instance().quit)
 
-        # Set the tray icon's menu
-        self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.activated.connect(self.tray_icon_activated)
-
-        # Show the tray icon
         self.tray_icon.show()
 
     def tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.show_settings()
+        elif reason == QSystemTrayIcon.ActivationReason.Context:
+            if self.nkms_daemon and self.nkms_daemon.running:
+                self.stop_action.setDisabled(False)
+                self.start_action.setDisabled(True)
+            else:
+                self.stop_action.setDisabled(True)
+                self.start_action.setDisabled(False)
+            self.tray_menu.exec(QCursor.pos())
 
     def show_settings(self):
         if not self.settings_window:
@@ -58,30 +60,22 @@ class NkmsQt(QObject):
         if self.settings.mode == "Client":
             from client import NkmsClient
             self.nkms_daemon = NkmsClient()
-
             self.nkms_thread = threading.Thread(target=self.nkms_daemon.run)
             self.nkms_thread.daemon = True
             self.nkms_thread.start()
-
         else:
             pass
 
-        self.stop_action.setDisabled(False)
-        self.start_action.setDisabled(True)
-
     def stop_nkms(self):
         if not (self.nkms_daemon or self.nkms_thread):
-            print('Error: Unable to stop daemon')
+            error_notify('Unable to stop daemon')
             return
 
         self.nkms_daemon.stop()
         self.nkms_thread.join(timeout=5)
         if self.nkms_thread.is_alive():
-            print('Error: Daemon did not stop')
+            error_notify('Daemon did not stop')
             return
-
-        self.stop_action.setDisabled(True)
-        self.start_action.setDisabled(False)
 
 
 if __name__ == '__main__':
@@ -89,4 +83,5 @@ if __name__ == '__main__':
     app.setQuitOnLastWindowClosed(False)
     nkms_qt = NkmsQt()
     nkms_qt.initialize()
+    nkms_qt.start_nkms()
     sys.exit(app.exec())

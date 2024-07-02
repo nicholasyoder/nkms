@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Get script directory
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Run NKMS
+/usr/bin/python3 "${script_dir}/main.py"

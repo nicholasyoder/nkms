@@ -1,38 +1,39 @@
-import notify2
+#!/usr/bin/env python3
+
+import os
+import pwd
+import subprocess
 
 
-INITIALIZED = False
-
-
-def initialize_notify2():
-    global INITIALIZED
-    if INITIALIZED:
-        return True
-
+def get_display(username):
+    cmd = f"who | grep {username} | grep -oP '\\(\\K:[0-9]+' | head -n 1"
     try:
-        notify2.init('NKMS')
-        INITIALIZED = True
-    except Exception:
-        print("Warning: notify2 init failed")
+        return subprocess.check_output(cmd, shell=True, text=True).strip()
+    except subprocess.CalledProcessError:
+        return None
 
-    return INITIALIZED
+
+SUDO_USER = os.environ.get('SUDO_USER') or os.environ.get('USER')
+USER_ID = pwd.getpwnam(SUDO_USER).pw_uid
+DISPLAY = get_display(SUDO_USER)
 
 
 def notify(title, text, icon="application-x-executable", timeout=8000):
-    global INITIALIZED
     print(f"{title}: {text}")
 
-    if not initialize_notify2():
-        return
-
-    try:
-        n = notify2.Notification(title, text, icon)
-        n.set_timeout(timeout)
-        n.show()
-    except Exception:
-        INITIALIZED = False
-        if initialize_notify2():
-            notify(title, text, icon, timeout)
+    dbus_address = f"unix:path=/run/user/{USER_ID}/bus"
+    cmd = [
+        'sudo', '-u', SUDO_USER,
+        f'DISPLAY={DISPLAY}',
+        'DBUS_SESSION_BUS_ADDRESS=' + dbus_address,
+        'notify-send',
+        '-a', 'NKMS',
+        '-t', str(timeout),
+        '-i', icon,
+        title,
+        text
+    ]
+    subprocess.run(cmd)
 
 
 def warning_notify(msg):

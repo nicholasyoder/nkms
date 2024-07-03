@@ -38,7 +38,7 @@ class NkmsClient:
         try:
             try:
                 self.sock.connect((server_address, port))
-            except TimeoutError:
+            except (TimeoutError, ConnectionRefusedError):
                 error_notify(f"Failed to connect to {server_address}:{port}")
                 return
 

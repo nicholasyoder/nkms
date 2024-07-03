@@ -86,7 +86,7 @@ class SettingsWindow(QWidget):
         buttons_layout.addStretch(1)
         close_bt = QPushButton("Close")
         buttons_layout.addWidget(close_bt)
-        apply_bt = QPushButton("Apply")
+        apply_bt = QPushButton("Save")
         buttons_layout.addWidget(apply_bt)
         buttons_layout.addStretch(1)
         base_layout.addLayout(buttons_layout)

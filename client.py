@@ -4,7 +4,7 @@ import socket
 import json
 from evdev import UInput, ecodes
 from settings import NkmsSettings
-from notify import error_notify, warning_notify
+from notify import error_notify, warning_notify, info_notify
 
 
 class NkmsClient:
@@ -28,7 +28,7 @@ class NkmsClient:
         self.ui = None
 
     def run(self):
-        # info_notify('NKMS client started')
+        info_notify('NKMS client started')
         port = int(self.settings.client_port)
         server_address = self.settings.client_server
 
@@ -91,7 +91,7 @@ class NkmsClient:
             self.ui.close()
         if self.sock:
             self.sock.close()
-        # info_notify("NKMS client stopped")
+        info_notify("NKMS client stopped")
 
 
 if __name__ == '__main__':

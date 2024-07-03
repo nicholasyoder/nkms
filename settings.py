@@ -17,6 +17,7 @@ class NkmsSettings:
         self.load()
 
     def load(self):
+        self.settings.sync()
         self.mode = self.settings.value("mode", self.mode)
         self.client_server = self.settings.value("client/server", self.client_server)
         self.client_port = self.settings.value("client/port", self.client_port)

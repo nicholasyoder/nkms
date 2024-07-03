@@ -57,14 +57,18 @@ class NkmsQt(QObject):
         self.settings_window.show()
 
     def start_nkms(self):
+        self.settings.load()
         if self.settings.mode == "Client":
+            print(self.settings.mode)
             from client import NkmsClient
             self.nkms_daemon = NkmsClient()
-            self.nkms_thread = threading.Thread(target=self.nkms_daemon.run)
-            self.nkms_thread.daemon = True
-            self.nkms_thread.start()
         else:
-            pass
+            from server import NkmsServer
+            self.nkms_daemon = NkmsServer()
+
+        self.nkms_thread = threading.Thread(target=self.nkms_daemon.run)
+        self.nkms_thread.daemon = True
+        self.nkms_thread.start()
 
     def stop_nkms(self):
         if not (self.nkms_daemon or self.nkms_thread):

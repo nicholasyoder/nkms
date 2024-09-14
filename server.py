@@ -22,6 +22,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             if self.request not in SOCKETS:
                 SOCKETS.append(self.request)
                 info_notify(f'New connection from {self.request}')
+                sleep(0.1)  # small delay to allow client to initialize
 
             new_caps = {}
             for dev in KM_DEVS:
@@ -132,9 +133,9 @@ class NkmsServer:
                             sock = SOCKETS[self.socket_index]
                             try:
                                 sock.send(bytes(f"{json.dumps(data)}\n", "utf-8"))
-                            except OSError:
+                            except (OSError, BrokenPipeError):
                                 warning_notify(f'Dropped connection: {sock}')
-                                del SOCKETS[self.socket_index]
+                                SOCKETS.remove(sock)
                                 self.socket_index = -1
                                 self.grabbing = False
         device.close()

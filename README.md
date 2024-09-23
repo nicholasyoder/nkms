@@ -9,6 +9,23 @@ between machines.
 There is virtually no lag when used with a good ethernet connection, but 
 it may lag a bit over wifi, especially if the signal is weak.
 
+
+## Dependencies
+
+NKMS depends on the following:
+* PyQt6
+* evdev
+
+Install with `pip`:
+```commandline
+pip install PyQt6 evdev
+```
+
+Install with `apt`:
+```commandline
+sudo apt install python-pyqt6 python-evdev
+```
+
 ## Configuration and Usage
 
 NKMS is controlled via a system tray icon. The tray icon's context menu allows

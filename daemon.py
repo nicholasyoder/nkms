@@ -1,0 +1,86 @@
+import sys
+import threading
+
+from PyQt6.QtCore import QObject, pyqtSlot
+from PyQt6.QtDBus import QDBusConnection
+from PyQt6.QtWidgets import QApplication
+
+from settings import NkmsSettings
+
+
+class NkmsDaemon(QObject):
+
+    def __init__(self):
+        super().__init__()
+        self.settings = NkmsSettings()
+        self.nkms_thread = None
+        self.nkms_daemon = None
+
+    @pyqtSlot()
+    def start(self) -> None:
+        print(f"Starting NKMS daemon...")
+        self.settings.load()
+        if self.settings.mode == "Client":
+            print(self.settings.mode)
+            from client import NkmsClient
+            self.nkms_daemon = NkmsClient()
+        else:
+            from server import NkmsServer
+            self.nkms_daemon = NkmsServer()
+
+        self.nkms_thread = threading.Thread(target=self.nkms_daemon.run)
+        self.nkms_thread.daemon = True
+        self.nkms_thread.start()
+
+    @pyqtSlot()
+    def stop(self) -> None:
+        print(f"Stopping NKMS daemon...")
+        if not (self.nkms_daemon or self.nkms_thread):
+            print('Failed to stop.')
+            return
+
+        self.nkms_daemon.stop()
+        self.nkms_thread.join(timeout=5)
+        if self.nkms_thread.is_alive():
+            print('Failed to stop.')
+            return
+
+    @pyqtSlot(result=bool)
+    def is_running(self) -> bool:
+        if self.nkms_daemon and self.nkms_daemon.running:
+            return True
+
+        return False
+
+
+def main():
+    app = QApplication(sys.argv)
+
+    # Initialize the D-Bus connection to the session bus
+    bus = QDBusConnection.systemBus()
+    if not bus.isConnected():
+        print("Cannot connect to the D-Bus system bus.")
+        sys.exit(1)
+
+    daemon = NkmsDaemon()
+    object_path = "/org/nkms"
+    service_name = "org.nkms"
+    interface_name = "org.nkms"
+
+    if not bus.registerObject(object_path, interface_name, daemon, QDBusConnection.RegisterOption.ExportAllSlots):
+        print(bus.lastError())
+        print(f"Failed to register object at {object_path} on D-Bus.")
+        sys.exit(1)
+
+    if not bus.registerService(service_name):
+        print(bus.lastError().message())
+        print(f"Failed to register service name {service_name} on D-Bus.")
+        sys.exit(1)
+
+    print(f"D-Bus service '{service_name}' is running at '{object_path}'.")
+    print("Waiting for D-Bus method calls...")
+
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

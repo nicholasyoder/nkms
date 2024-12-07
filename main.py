@@ -1,23 +1,27 @@
 import sys
-import threading
+from typing import Any
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QCursor
 from PyQt6.QtCore import QObject
+from PyQt6.QtDBus import QDBusConnection, QDBusMessage
 from settings import SettingsWindow, NkmsSettings
-from notify import error_notify
 
 
 class NkmsQt(QObject):
     def __init__(self):
         super().__init__()
         self.settings = NkmsSettings()
-        self.nkms_thread = None
-        self.nkms_daemon = None
         self.settings_window = None
         self.tray_icon = None
         self.start_action = None
         self.stop_action = None
         self.tray_menu = None
+
+        # Connect to the session bus
+        self.bus = QDBusConnection.systemBus()
+        if not self.bus.isConnected():
+            print("Cannot connect to the D-Bus session bus")
+            sys.exit(1)
 
     def initialize(self):
         # TODO: load icon theme from qt5ctl settings file
@@ -32,18 +36,35 @@ class NkmsQt(QObject):
         self.start_action.triggered.connect(self.start_nkms)
         self.stop_action = self.tray_menu.addAction("Stop")
         self.stop_action.triggered.connect(self.stop_nkms)
-        self.stop_action.setDisabled(True)
         quit_action = self.tray_menu.addAction("Quit")
         quit_action.triggered.connect(QApplication.instance().quit)
 
         self.tray_icon.activated.connect(self.tray_icon_activated)
         self.tray_icon.show()
 
+    def call_daemon(self, method: str, args: list[Any] | None = None) -> Any:
+        """Call daemon method via dbus"""
+        message = QDBusMessage.createMethodCall(
+            'org.nkms',
+            '/org/nkms',
+            'org.nkms',
+            method,
+        )
+        if args:
+            message.setArguments(args)
+
+        reply = self.bus.call(message)
+        if reply.type() != QDBusMessage.MessageType.ReplyMessage:
+            print("Error:", reply.errorMessage())
+            return None
+
+        return reply.arguments()[0] if len(reply.arguments()) == 1 else reply.arguments()
+
     def tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.show_settings()
         elif reason == QSystemTrayIcon.ActivationReason.Context:
-            if self.nkms_daemon and self.nkms_daemon.running:
+            if self.call_daemon('is_running') is True:
                 self.stop_action.setDisabled(False)
                 self.start_action.setDisabled(True)
             else:
@@ -57,29 +78,10 @@ class NkmsQt(QObject):
         self.settings_window.show()
 
     def start_nkms(self):
-        self.settings.load()
-        if self.settings.mode == "Client":
-            print(self.settings.mode)
-            from client import NkmsClient
-            self.nkms_daemon = NkmsClient()
-        else:
-            from server import NkmsServer
-            self.nkms_daemon = NkmsServer()
-
-        self.nkms_thread = threading.Thread(target=self.nkms_daemon.run)
-        self.nkms_thread.daemon = True
-        self.nkms_thread.start()
+        self.call_daemon('start')
 
     def stop_nkms(self):
-        if not (self.nkms_daemon or self.nkms_thread):
-            error_notify('Unable to stop daemon')
-            return
-
-        self.nkms_daemon.stop()
-        self.nkms_thread.join(timeout=5)
-        if self.nkms_thread.is_alive():
-            error_notify('Daemon did not stop')
-            return
+        self.call_daemon('stop')
 
 
 if __name__ == '__main__':

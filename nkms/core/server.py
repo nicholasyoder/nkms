@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import select
 import socketserver
 import json
@@ -7,8 +5,9 @@ import evdev
 import evdev.ecodes as e
 import threading
 from time import sleep
-from settings import NkmsSettings
-from notify import info_notify, warning_notify, error_notify
+
+from nkms.core.settings import NkmsSettings
+from nkms.utils.notify import info_notify, warning_notify
 
 
 SOCKETS = []

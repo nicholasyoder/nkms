@@ -1,10 +1,9 @@
-#!/usr/bin/python3
-
 import socket
 import json
 from evdev import UInput, ecodes
 from settings import NkmsSettings
-from notify import error_notify, warning_notify, info_notify
+
+from nkms.utils.notify import error_notify, warning_notify, info_notify
 
 
 class NkmsClient:

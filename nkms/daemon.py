@@ -5,7 +5,7 @@ from PyQt6.QtCore import QObject, pyqtSlot
 from PyQt6.QtDBus import QDBusConnection
 from PyQt6.QtWidgets import QApplication
 
-from settings import NkmsSettings
+from nkms.core.settings import NkmsSettings
 
 
 class NkmsDaemon(QObject):
@@ -22,10 +22,10 @@ class NkmsDaemon(QObject):
         self.settings.load()
         if self.settings.mode == "Client":
             print(self.settings.mode)
-            from client import NkmsClient
+            from nkms.core.client import NkmsClient
             self.nkms_daemon = NkmsClient()
         else:
-            from server import NkmsServer
+            from nkms.core.server import NkmsServer
             self.nkms_daemon = NkmsServer()
 
         self.nkms_thread = threading.Thread(target=self.nkms_daemon.run)

@@ -1,7 +1,16 @@
-from PyQt6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, \
-    QComboBox, QLabel, QGroupBox, QGridLayout, QLineEdit
-
 from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QStackedLayout,
+    QComboBox,
+    QLabel,
+    QGroupBox,
+    QGridLayout,
+    QLineEdit,
+)
 
 
 class NkmsSettings:

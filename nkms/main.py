@@ -4,7 +4,8 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QCursor
 from PyQt6.QtCore import QObject
 from PyQt6.QtDBus import QDBusConnection, QDBusMessage
-from settings import SettingsWindow, NkmsSettings
+
+from nkms.core.settings import SettingsWindow, NkmsSettings
 
 
 class NkmsQt(QObject):

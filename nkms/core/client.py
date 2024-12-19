@@ -1,8 +1,8 @@
 import socket
 import json
 from evdev import UInput, ecodes
-from settings import NkmsSettings
 
+from nkms.core.settings import NkmsSettings
 from nkms.utils.notify import error_notify, warning_notify, info_notify
 
 
@@ -23,46 +23,62 @@ class NkmsClient:
             17: [0, 1, 2, 3, 4]
         }
         self.running = False
-        self.sock = None
         self.ui = None
+        self.server_addr_port: tuple = ()
 
-    def run(self):
-        info_notify('NKMS client started')
-        port = int(self.settings.client_port)
-        server_address = self.settings.client_server
+    def init_server_connection(self) -> None:
+        """Connect to the server and prepare for receiving events."""
+        self.server_addr_port = (self.settings.client_server, self.settings.client_port)
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(1.0)
+        # Get device capabilities from server
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(b"get devices", self.server_addr_port)
+        data = self.receive_data(sock=sock, buffer_size=50000)
+        self.ui = UInput(
+            events=self.parse_capabilities(data),
+            name='NetKMSwitch Keyboard and Mouse',
+        )
 
-        try:
+        # Tell the server we're ready for events
+        sock.sendto(b"initialized", self.server_addr_port)
+        sock.close()
+
+    def run(self) -> None:
+        info_notify('Starting NKMS client')
+
+        # Setup socket to listen for events
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(2)  # self.running check interval when there are no new events
+        data_port = self.settings.client_port + 1
+        sock.bind(('', data_port))  # just use the next higher port
+        print(f"Listening for events on port {data_port}")
+
+        self.init_server_connection()
+
+        self.running = True
+        while self.running:
+            # Send keep-alive ping
+            send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            send_sock.sendto(b'ping', self.server_addr_port)
+            send_sock.close()
+
+            # Try to receive events
             try:
-                self.sock.connect((server_address, port))
-            except (TimeoutError, ConnectionRefusedError):
-                error_notify(f"Failed to connect to {server_address}:{port}")
-                return
+                data = self.receive_data(sock=sock, buffer_size=1024)
+                self.process_data(data)
+            except socket.timeout:
+                continue
+            except Exception as e:
+                error_notify("Main loop failed")
+                print(e)
+                self.running = False
 
-            self.running = True
+        sock.close()
+        self.cleanup()
 
-            data = self.receive_data(50000)
-            new_caps = self.parse_capabilities(data)
-
-            self.ui = UInput(new_caps, name='NetKMSwitch Keyboard and Mouse')
-
-            while self.running:
-                try:
-                    data = self.receive_data(1024)
-                    self.process_data(data)
-                except socket.timeout:
-                    continue  # Keep checking self.running regularly
-                except Exception as e:
-                    error_notify("Main loop failed")
-                    print(e)
-                    self.running = False
-        finally:
-            self.cleanup()
-
-    def receive_data(self, buffer_size):
-        return str(self.sock.recv(buffer_size), "utf-8").strip()
+    @staticmethod
+    def receive_data(sock, buffer_size):
+        return str(sock.recv(buffer_size), "utf-8").strip()
 
     def parse_capabilities(self, data):
         try:
@@ -88,8 +104,6 @@ class NkmsClient:
     def cleanup(self):
         if self.ui:
             self.ui.close()
-        if self.sock:
-            self.sock.close()
         info_notify("NKMS client stopped")
 
 

@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QGridLayout,
     QLineEdit,
+    QSpinBox,
 )
 
 
@@ -29,9 +30,9 @@ class NkmsSettings:
         self.settings.sync()
         self.mode = self.settings.value("mode", self.mode)
         self.client_server = self.settings.value("client/server", self.client_server)
-        self.client_port = self.settings.value("client/port", self.client_port)
+        self.client_port = int(self.settings.value("client/port", self.client_port))
         self.server_address = self.settings.value("server/bind_address", self.server_address)
-        self.server_port = self.settings.value("server/port", self.server_port)
+        self.server_port = int(self.settings.value("server/port", self.server_port))
 
     def save(self):
         self.settings.setValue("mode", self.mode)
@@ -71,9 +72,11 @@ class SettingsWindow(QWidget):
         self.client_server_input = QLineEdit()
         client_base_layout.addWidget(self.client_server_input, 0, 1)
         client_base_layout.addWidget(QLabel("Port:"), 1, 0)
-        self.client_port_input = QLineEdit()
+        self.client_port_input = QSpinBox()
+        self.client_port_input.setRange(0, 65535)
         client_base_layout.addWidget(self.client_port_input, 1, 1)
         client_gbox.setLayout(client_base_layout)
+        client_base_layout.addWidget(QLabel("Note: Next higher port will also be used."), 2, 0, 2, 2)
         self.stacked_layout.addWidget(client_gbox)
 
         server_gbox = QGroupBox("Server Settings")
@@ -82,9 +85,11 @@ class SettingsWindow(QWidget):
         self.server_address_input = QLineEdit()
         server_base_layout.addWidget(self.server_address_input, 0, 1)
         server_base_layout.addWidget(QLabel("Port:"), 1, 0)
-        self.server_port_input = QLineEdit()
+        self.server_port_input = QSpinBox()
+        self.server_port_input.setRange(0, 65535)
         server_base_layout.addWidget(self.server_port_input, 1, 1)
         server_gbox.setLayout(server_base_layout)
+        server_base_layout.addWidget(QLabel("Note: Next higher port will also be used."), 2, 0, 2, 2)
         self.stacked_layout.addWidget(server_gbox)
 
         base_layout.addLayout(self.stacked_layout)
@@ -111,9 +116,9 @@ class SettingsWindow(QWidget):
     def load_settings(self):
         self.mode_select.setCurrentText(self.settings.mode)
         self.client_server_input.setText(self.settings.client_server)
-        self.client_port_input.setText(self.settings.client_port)
+        self.client_port_input.setValue(self.settings.client_port)
         self.server_address_input.setText(self.settings.server_address)
-        self.server_port_input.setText(self.settings.server_port)
+        self.server_port_input.setValue(self.settings.server_port)
         self.stacked_layout.setCurrentIndex(self.mode_select.currentIndex())
 
     def apply_settings(self):

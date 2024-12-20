@@ -1,5 +1,6 @@
 import select
 import json
+
 import evdev
 import socket
 import threading
@@ -7,6 +8,7 @@ from time import sleep, time
 
 from nkms.core.settings import NkmsSettings
 from nkms.utils.notify import info_notify, warning_notify
+from nkms.utils.udp_socket import UdpSocket
 
 client_lock = threading.Lock()
 
@@ -83,7 +85,7 @@ class NkmsServer:
 
     def handle_events(self, device):
         """Start loop to listen for device's events."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock = UdpSocket()
         data_port = self.settings.server_port + 1  # just use the next higher port
 
         while self.running:
@@ -94,7 +96,7 @@ class NkmsServer:
             for event in device.read():
                 if not self.running:
                     break
-                self.do_grabbing(device)  # TODO: can't this go in get_next_client?
+                self.do_grabbing(device)
                 if event.code == evdev.ecodes.KEY_RIGHTCTRL:
                     if self.toggle_key_down:
                         self.get_next_client()
@@ -106,7 +108,10 @@ class NkmsServer:
                         if self.clients and self.client_index >= 0:
                             client = self.clients[self.client_index]
                             try:
-                                sock.sendto(bytes(f"{json.dumps(data)}\n", "utf-8"), (client, data_port))
+                                sock.send_string_to(
+                                    string=f"{json.dumps(data)}\n",
+                                    to=(client, data_port),
+                                )
                             except OSError as e:
                                 warning_notify(f'Error sending to {client}: {e!s}')
                                 self.clients.remove(client)
@@ -115,12 +120,11 @@ class NkmsServer:
         device.close()
 
     def listen_for_clients(self, address, port):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(2)
+        sock = UdpSocket(timeout=2)
         sock.bind((address, port))
         print(f"Server listening for clients on port {port}")
 
-        while True:
+        while self.running:
             # Check for inactive clients
             now = time()
             with client_lock:
@@ -144,11 +148,13 @@ class NkmsServer:
 
             addr = addr_port[0]
             if data == b'ping':  # update active timestamp for this client
+                sock.send_string_to(string='pong', to=addr_port)
                 self.activity[addr] = time()
             if data == b"get devices":
-                dev_caps = get_capabilities(self.devices)
-                data = bytes(f"{json.dumps(dev_caps)}\n", "utf-8")
-                sock.sendto(data, addr_port)
+                sock.send_string_to(
+                    string=f"{json.dumps(get_capabilities(self.devices))}\n",
+                    to=addr_port,
+                )
                 print(f"Sent device list to: {addr}")
             elif data == b'initialized':
                 with client_lock:
@@ -188,6 +194,9 @@ class NkmsServer:
 
     def stop(self):
         self.running = False
+        for thread in self.threads:
+            thread.join()
+
         info_notify('NKMS Server Stopped')
 
 

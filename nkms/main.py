@@ -90,5 +90,4 @@ if __name__ == '__main__':
     app.setQuitOnLastWindowClosed(False)
     nkms_qt = NkmsQt()
     nkms_qt.initialize()
-    nkms_qt.start_nkms()
     sys.exit(app.exec())

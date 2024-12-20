@@ -53,34 +53,39 @@ class NkmsDaemon(QObject):
         return False
 
 
-def main():
-    app = QApplication(sys.argv)
-
-    # Initialize the D-Bus connection to the session bus
+def register_on_dbus(nkms_daemon: NkmsDaemon) -> bool:
+    """Register nkms daemon object on dbus.
+    Returns True on success and False on failure.
+    """
     bus = QDBusConnection.systemBus()
     if not bus.isConnected():
         print("Cannot connect to the D-Bus system bus.")
-        sys.exit(1)
+        return False
 
-    daemon = NkmsDaemon()
     object_path = "/org/nkms"
     service_name = "org.nkms"
     interface_name = "org.nkms"
 
-    if not bus.registerObject(object_path, interface_name, daemon, QDBusConnection.RegisterOption.ExportAllSlots):
+    if not bus.registerObject(object_path, interface_name, nkms_daemon, QDBusConnection.RegisterOption.ExportAllSlots):
         print(bus.lastError())
         print(f"Failed to register object at {object_path} on D-Bus.")
-        sys.exit(1)
+        return False
 
     if not bus.registerService(service_name):
         print(bus.lastError().message())
         print(f"Failed to register service name {service_name} on D-Bus.")
-        sys.exit(1)
+        return False
 
-    print(f"D-Bus service '{service_name}' is running at '{object_path}'.")
-    print("Waiting for D-Bus method calls...")
+    print(f"D-Bus service '{service_name}' is registered at '{object_path}'.")
+    return True
 
-    sys.exit(app.exec())
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+
+    daemon = NkmsDaemon()
+    if not register_on_dbus(nkms_daemon=daemon):
+        print('Failed to register on D-Bus. The applet will be unable to control the daemon.')
+
+    daemon.start()
+    sys.exit(app.exec())

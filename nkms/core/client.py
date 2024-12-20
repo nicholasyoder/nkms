@@ -1,92 +1,116 @@
 import socket
 import json
-from evdev import UInput, ecodes
+import threading
+import time
 
+from evdev import UInput
+
+from nkms.core.constants import FALLBACK_DEVICE_CAPABILITIES
 from nkms.core.settings import NkmsSettings
 from nkms.utils.notify import error_notify, warning_notify, info_notify
+from nkms.utils.udp_socket import UdpSocket
 
 
 class NkmsClient:
     def __init__(self):
         self.settings = NkmsSettings()
-        self.default_capabilities = {
-            ecodes.EV_KEY: [
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-                31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
-                59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 85, 86, 87,
-                88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 113, 114,
-                115, 116, 117, 119, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138,
-                140, 142, 150, 152, 158, 159, 161, 163, 164, 165, 166, 173, 176, 177, 178, 179, 180, 183, 184, 185, 186, 187,
-                188, 189, 190, 191, 192, 193, 194, 240, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287],
-            ecodes.EV_REL: [0, 1, 6, 8, 11, 12],
-            ecodes.EV_MSC: [4],
-            17: [0, 1, 2, 3, 4]
-        }
         self.running = False
-        self.ui = None
+        self.ui: UInput | None = None
         self.server_addr_port: tuple = ()
+        self.active = False
+        self.event_thread: threading.Thread | None = None
 
-    def init_server_connection(self) -> None:
-        """Connect to the server and prepare for receiving events."""
-        self.server_addr_port = (self.settings.client_server, self.settings.client_port)
-
-        # Get device capabilities from server
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(b"get devices", self.server_addr_port)
-        data = self.receive_data(sock=sock, buffer_size=50000)
-        self.ui = UInput(
-            events=self.parse_capabilities(data),
-            name='NetKMSwitch Keyboard and Mouse',
-        )
-
-        # Tell the server we're ready for events
-        sock.sendto(b"initialized", self.server_addr_port)
-        sock.close()
-
-    def run(self) -> None:
-        info_notify('Starting NKMS client')
-
-        # Setup socket to listen for events
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(2)  # self.running check interval when there are no new events
+    def listen_for_events(self):
+        """Receive and process events from the server."""
+        sock = UdpSocket(timeout=1)
         data_port = self.settings.client_port + 1
         sock.bind(('', data_port))  # just use the next higher port
         print(f"Listening for events on port {data_port}")
 
-        self.init_server_connection()
-
-        self.running = True
-        while self.running:
-            # Send keep-alive ping
-            send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            send_sock.sendto(b'ping', self.server_addr_port)
-            send_sock.close()
-
-            # Try to receive events
+        while self.active:
             try:
-                data = self.receive_data(sock=sock, buffer_size=1024)
-                self.process_data(data)
+                self.process_data(sock.receive_string())
             except socket.timeout:
                 continue
-            except Exception as e:
-                error_notify("Main loop failed")
-                print(e)
-                self.running = False
 
         sock.close()
-        self.cleanup()
+
+    def run(self) -> None:
+        info_notify('Starting NKMS client')
+        self.server_addr_port = (self.settings.client_server, self.settings.client_port)
+        sock = UdpSocket(timeout=4)
+        self.running = True
+        while self.running:
+            if self.active:  # do keep-alive pings
+                try:
+                    sock.send_string_to(string='ping', to=self.server_addr_port)
+                    if (data := sock.receive_string()) == 'pong':
+                        time.sleep(1)  # server is alive, wait and ping again
+                    else:
+                        print(f'Unexpected reply from server ping: {data}')
+                        self.stop_events_listener()
+                except socket.timeout:
+                    print('Keep-alive ping timed out.')
+                    self.stop_events_listener()
+
+            else: # do pings to check if server is online
+                try:
+                    sock.send_string_to(string='ping', to=self.server_addr_port)
+                    if (data := sock.receive_string()) != 'pong':
+                        print(f'Unexpected reply from server ping: {data}')
+                        time.sleep(5)
+                        continue
+                except socket.timeout:
+                    continue
+
+                # Got a response from server ping. start listening for events
+                self.start_events_listener()
+
+
+    def start_events_listener(self):
+        """Start listen for events thread."""
+        print("Starting events thread...")
+        sock = UdpSocket(timeout=4)
+        # Get device capabilities from server
+        try:
+            sock.send_string_to(string='get devices', to=self.server_addr_port)
+            data = sock.receive_string(buffer_size=50000)
+        except socket.timeout:
+            print('Failed to get capabilities from server.')
+            return
+        # Setup UInput device with capabilities from server
+        self.ui = UInput(
+            events=self.parse_capabilities(data),
+            name='NetKMSwitch Keyboard and Mouse',
+        )
+        # Start events thread
+        self.active = True
+        self.event_thread = threading.Thread(target=self.listen_for_events)
+        self.event_thread.daemon = True
+        self.event_thread.start()
+        # Tell the server we're ready for events
+        sock.send_string_to(string='initialized', to=self.server_addr_port)
+        sock.close()
+        print("Started events thread.")
+
+    def stop_events_listener(self):
+        """Stop listen for events thread."""
+        print("Stopping events thread...")
+        self.active = False
+        if self.event_thread is not None:
+            self.event_thread.join() # wait for thread to check self.active and shutdown
+        if self.ui:
+            self.ui.close()
+        print("Stopped events thread.")
 
     @staticmethod
-    def receive_data(sock, buffer_size):
-        return str(sock.recv(buffer_size), "utf-8").strip()
-
-    def parse_capabilities(self, data):
+    def parse_capabilities(data):
         try:
             dev_caps = json.loads(data)
             return {int(k): dev_caps[k] for k in dev_caps.keys()}
         except json.decoder.JSONDecodeError:
             warning_notify('Unable to load device capabilities. Falling back to defaults.')
-            return self.default_capabilities
+            return FALLBACK_DEVICE_CAPABILITIES
 
     def process_data(self, data):
         for line in data.split("\n"):
@@ -100,11 +124,7 @@ class NkmsClient:
 
     def stop(self):
         self.running = False
-
-    def cleanup(self):
-        if self.ui:
-            self.ui.close()
-        info_notify("NKMS client stopped")
+        self.stop_events_listener()
 
 
 if __name__ == '__main__':

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+cleanup() {
+    exit_code=$?
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+exec /usr/bin/python3 "/usr/lib/python3/dist-packages/nkms/daemon.py"

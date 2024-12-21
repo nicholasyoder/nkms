@@ -1,0 +1,13 @@
+Source: nkms
+Section: python
+Priority: optional
+Maintainer: Nicholas Yoder <nicholasyoder@proton.me>
+Build-Depends: debhelper-compat (= 13), dh-python
+Standards-Version: 4.6.2
+Homepage: https://github.com/nicholasyoder/nkms
+
+Package: nkms
+Architecture: all
+Depends: ${misc:Depends}, python3-evdev, python3-pyqt6
+Description: Network Keyboard Mouse Switch
+ Switch keyboard and mouse input between multiple machines via the network

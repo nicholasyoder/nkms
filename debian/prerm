@@ -1,0 +1,22 @@
+#!/bin/bash
+# Pre-removal script
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        echo "Preparing for package removal..."
+        systemctl stop nkms
+        systemctl disable nkms
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        log "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

@@ -1,9 +1,10 @@
 import sys
 import threading
+from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSlot
 from PyQt6.QtDBus import QDBusConnection
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 
 from nkms.core.settings import NkmsSettings
 
@@ -52,6 +53,10 @@ class NkmsDaemon(QObject):
 
         return False
 
+    @pyqtSlot('QVariantMap')
+    def save_settings(self, settings_dict: dict[str, Any]) -> None:
+        self.settings.save_settings_dict(settings_dict=settings_dict)
+
 
 def register_on_dbus(nkms_daemon: NkmsDaemon) -> bool:
     """Register nkms daemon object on dbus.
@@ -81,7 +86,7 @@ def register_on_dbus(nkms_daemon: NkmsDaemon) -> bool:
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    app = QCoreApplication(sys.argv)
 
     daemon = NkmsDaemon()
     if not register_on_dbus(nkms_daemon=daemon):

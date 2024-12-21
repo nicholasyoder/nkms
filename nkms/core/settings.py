@@ -1,4 +1,6 @@
-from PyQt6.QtCore import QSettings
+from typing import Any
+
+from PyQt6.QtCore import QSettings, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
     QPushButton,
@@ -16,7 +18,7 @@ from PyQt6.QtWidgets import (
 
 class NkmsSettings:
     def __init__(self):
-        self.settings = QSettings("nkms")
+        self.settings = QSettings("/etc/nkms/nkms.conf", QSettings.Format.IniFormat)
         # Defaults
         self.mode = "Client"
         self.client_server = ""
@@ -35,15 +37,28 @@ class NkmsSettings:
         self.server_port = int(self.settings.value("server/port", self.server_port))
 
     def save(self):
-        self.settings.setValue("mode", self.mode)
-        self.settings.setValue("client/server", self.client_server)
-        self.settings.setValue("client/port", self.client_port)
-        self.settings.setValue("server/bind_address", self.server_address)
-        self.settings.setValue("server/port", self.server_port)
+        for key, value in self.get_settings_dict():
+            self.settings.setValue(key, value)
         self.settings.sync()
+
+    def get_settings_dict(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "client/server": self.client_server,
+            "client/port": self.client_port,
+            "server/bind_address": self.server_address,
+            "server/port": self.server_port,
+        }
+
+    def save_settings_dict(self, settings_dict: dict[str, Any]) -> None:
+        for key, value in settings_dict.items():
+            self.settings.setValue(key, value)
 
 
 class SettingsWindow(QWidget):
+
+    settings_saved = pyqtSignal(dict)
+
     def __init__(self):
         super().__init__()
         self.settings = NkmsSettings()
@@ -127,4 +142,4 @@ class SettingsWindow(QWidget):
         self.settings.client_port = self.client_port_input.text()
         self.settings.server_address = self.server_address_input.text()
         self.settings.server_port = self.server_port_input.text()
-        self.settings.save()
+        self.settings_saved.emit(self.settings.get_settings_dict())

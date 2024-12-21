@@ -1,0 +1,23 @@
+#!/bin/bash
+# Post-installation script
+
+set -e
+
+case "$1" in
+    configure)
+        echo "Running post-installation script..."
+        systemctl reload dbus
+        systemctl enable nkms
+        systemctl start nkms
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

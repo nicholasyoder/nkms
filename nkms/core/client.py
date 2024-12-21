@@ -7,7 +7,6 @@ from evdev import UInput
 
 from nkms.core.constants import FALLBACK_DEVICE_CAPABILITIES
 from nkms.core.settings import NkmsSettings
-from nkms.utils.notify import error_notify, warning_notify, info_notify
 from nkms.utils.udp_socket import UdpSocket
 
 
@@ -36,7 +35,7 @@ class NkmsClient:
         sock.close()
 
     def run(self) -> None:
-        info_notify('Starting NKMS client')
+        print('Starting NKMS client')
         self.server_addr_port = (self.settings.client_server, self.settings.client_port)
         sock = UdpSocket(timeout=4)
         self.running = True
@@ -109,7 +108,7 @@ class NkmsClient:
             dev_caps = json.loads(data)
             return {int(k): dev_caps[k] for k in dev_caps.keys()}
         except json.decoder.JSONDecodeError:
-            warning_notify('Unable to load device capabilities. Falling back to defaults.')
+            print('Unable to load device capabilities. Falling back to defaults.')
             return FALLBACK_DEVICE_CAPABILITIES
 
     def process_data(self, data):
@@ -119,7 +118,7 @@ class NkmsClient:
                 self.ui.write(j_data[0], j_data[1], j_data[2])
                 self.ui.syn()
             except json.decoder.JSONDecodeError:
-                error_notify('JSON decode failed')
+                print('JSON decode failed')
                 self.running = False
 
     def stop(self):

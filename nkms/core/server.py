@@ -7,7 +7,6 @@ import threading
 from time import sleep, time
 
 from nkms.core.settings import NkmsSettings
-from nkms.utils.notify import info_notify, warning_notify
 from nkms.utils.udp_socket import UdpSocket
 
 client_lock = threading.Lock()
@@ -113,7 +112,7 @@ class NkmsServer:
                                     to=(client, data_port),
                                 )
                             except OSError as e:
-                                warning_notify(f'Error sending to {client}: {e!s}')
+                                print(f'Error sending to {client}: {e!s}')
                                 self.clients.remove(client)
                                 self.get_next_client()
 
@@ -187,7 +186,7 @@ class NkmsServer:
             thread.daemon = True
             thread.start()
 
-        info_notify('NKMS Server Started')
+        print('NKMS Server Started')
 
         while self.running:
             sleep(1)
@@ -197,7 +196,7 @@ class NkmsServer:
         for thread in self.threads:
             thread.join()
 
-        info_notify('NKMS Server Stopped')
+        print('NKMS Server Stopped')
 
 
 if __name__ == "__main__":

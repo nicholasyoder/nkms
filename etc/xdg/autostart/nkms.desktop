@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=NKMS applet
+Exec=/usr/bin/nkms-applet
+Type=Application
+NoDisplay=true

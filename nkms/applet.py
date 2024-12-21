@@ -76,7 +76,11 @@ class NkmsQt(QObject):
     def show_settings(self):
         if not self.settings_window:
             self.settings_window = SettingsWindow()
+            self.settings_window.settings_saved.connect(self.save_settings)
         self.settings_window.show()
+
+    def save_settings(self, settings_dict: dict[str, Any]) -> None:
+        self.call_daemon(method='save_settings', args=[settings_dict])
 
     def start_nkms(self):
         self.call_daemon('start')

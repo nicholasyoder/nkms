@@ -1,0 +1,8 @@
+nkms (0.1-1) unstable; urgency=medium
+
+  * Run daemon as a systemd service
+  * Improve detection and handling of client/server going offline
+  * Use UDP instead of TCP for lower latency and simpler connection management
+  * Split daemon and applet into separate programs communicating via D-Bus
+
+ -- Nicholas Yoder <nicholasyoder@proton.me>  Sat, 21 Dec 2024 10:00:00 +0000

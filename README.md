@@ -1,51 +1,60 @@
-# NKMS
+# NKMS - Network Keyboard Mouse Switch
 
-NKMS is an acronym for Network Keyboard Mouse Switch. NKMS switches keyboard 
-and mouse input between muliple computers connected via the network using TCP.
-This allows you to only have one keyboard and mouse on your desk even if you 
-are using mulitple computers at once. The right control key switches the input
-between machines.
+NKMS allows control of multiple computers 
+on the local network using a single keyboard and mouse.
 
-There is virtually no lag when used with a good ethernet connection, but 
-it may lag a bit over wifi, especially if the signal is weak.
+Response time is near-instantaneous when used with a stable ethernet connection, 
+but some lag may occur when using Wi-Fi.
 
 
-## Dependencies
+## Architecture
 
-NKMS depends on the following:
-* PyQt6
-* evdev
+NKMS consists of two main components:
 
-Install with `pip`:
-```commandline
-pip install PyQt6 evdev
-```
+* `nkms-daemon`  
+    This handles the core functionality of capturing, forwarding, and creating input events.
+    It requires root privileges and is managed by a systemd service.
+* `nkms-applet`  
+    This provides a system tray icon for controlling the daemon via D-Bus.
+    The tray icon's context menu allows you to open the settings, start/stop the daemon, etc.
 
-Install with `apt`:
-```commandline
-sudo apt install python-pyqt6 python-evdev
-```
 
-## Configuration and Usage
+## Configuration
 
-NKMS is controlled via a system tray icon. The tray icon's context menu allows
-you to open the settings, start / stop the NKMS daemon, etc.
+NKMS can be configured via the GUI or by manually editing the configuration file.
 
-The machine your keyboard and mouse are connected to should be set to `Server` 
-mode, and all other machines should be set to `Client` mode as well as having
-the `Server` address set. Be sure to set all machines to use the same port 
-number.
+**GUI Configuration:**
 
-NKMS must run as root, otherwise it cannot access the input devices.
+1. Right-click the NKMS system tray icon and click `Settings`.
+2. Modify the settings as needed and click `Save`.
+3. Restart the daemon via the `Stop` and `Start` menu items.
 
-## Autostart at login
+**Manual Configuration:**
 
-First, since NKMS must run as root, you need to allow the `nkms` script 
-to be run with sudo without requiring a password.
+1. Edit the configuration file located at `/etc/nkms/nkms.conf`.
+2. Restart the systemd service: `sudo systemctl restart nkms`.
 
-1. `sudo visudo`
-2. Add this line: `yourusername ALL=(ALL) NOPASSWD: /path/to/nkms`
 
-Then using your desktop's autostart functionality, set the following command
-to autostart on login: `sudo /path/to/nkms`
+## Operation Modes
 
+* **Server Mode:**  
+    The server captures keyboard and mouse input and forwards it to the clients.
+    This mode should be enabled **only** on the machine where your physical 
+    keyboard and mouse are plugged in.
+* **Client Mode:**  
+    The client receives input from the server and sends it to the system 
+    through a virtual input device. This mode must be enabled on all machines 
+    you want to control from the server.
+    You must configure the server's IP address or hostname in the client settings.
+
+**Important:** Ensure all machines are configured to use the same port number.
+
+
+## Usage
+
+Press the right control key to switch input between machines.
+The order is server, then each client in the order they connected,
+then back to the server.
+
+The hotkey is currently hardcoded to the right control key,
+but this will be configurable in a future release.

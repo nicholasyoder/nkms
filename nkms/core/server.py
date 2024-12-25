@@ -49,7 +49,9 @@ class NkmsServer:
 
     def __init__(self):
         self.settings = NkmsSettings()
-        self.toggle_key_down = False
+        self.keys_activated = False
+        self.key1_down = False
+        self.key2_down = False
         self.grabbing = False
         self.grab_status = {}
         self.devices = []
@@ -82,6 +84,37 @@ class NkmsServer:
             self.client_index = self.client_index + 1
             self.grabbing = True
 
+    def _maybe_get_next_client(self, key_code: int, key_down: bool) -> None:
+        """Go to next client if switch key sequence has been pressed.
+        Returns True if going to next client, otherwise returns False.
+        """
+        if key_code == self.settings.server_key1:
+            if (
+                self.key1_down is True and  # key1 is releasing
+                (
+                    self.settings.server_key2 == 0 or  # key2 is undefined or
+                    (self.keys_activated is True and self.key2_down is False)  # key2 was pressed and released
+                )
+            ):
+                # without key2: key1 was pressed, and is now releasing
+                # with key2: key1 was pressed, key2 was pressed, key2 was released, key1 is now releasing
+                self.get_next_client()
+                self.keys_activated = False
+
+            self.key1_down = not self.key1_down
+
+        elif key_code == self.settings.server_key2:
+            if self.key2_down is True and self.keys_activated is True and self.key1_down is False:
+                # key1 was pressed, key2 was pressed, key1 released, now key2 is releasing
+                self.get_next_client()
+                self.keys_activated = False
+
+            if self.key1_down is True:
+                self.keys_activated = True
+
+            self.key2_down = not self.key2_down
+
+
     def handle_events(self, device):
         """Start loop to listen for device's events."""
         sock = UdpSocket()
@@ -95,26 +128,27 @@ class NkmsServer:
             for event in device.read():
                 if not self.running:
                     break
-                self.do_grabbing(device)
-                if event.code == evdev.ecodes.KEY_RIGHTCTRL:
-                    if self.toggle_key_down:
-                        self.get_next_client()
-                    self.toggle_key_down = not self.toggle_key_down
-                else:
-                    data = [event.type, event.code, event.value]
 
-                    with client_lock:  # Protect clients list access
-                        if self.clients and self.client_index >= 0:
-                            client = self.clients[self.client_index]
-                            try:
-                                sock.send_string_to(
-                                    string=f"{json.dumps(data)}\n",
-                                    to=(client, data_port),
-                                )
-                            except OSError as e:
-                                print(f'Error sending to {client}: {e!s}')
-                                self.clients.remove(client)
-                                self.get_next_client()
+                self.do_grabbing(device)
+                data = [event.type, event.code, event.value]
+                with client_lock:  # Protect clients list access
+                    if self.clients and self.client_index >= 0:
+                        client = self.clients[self.client_index]
+                        try:
+                            sock.send_string_to(
+                                string=f"{json.dumps(data)}\n",
+                                to=(client, data_port),
+                            )
+                        except OSError as e:
+                            print(f'Error sending to {client}: {e!s}')
+                            self.clients.remove(client)
+                            self.get_next_client()
+
+                if (
+                    event.type == evdev.ecodes.EV_KEY and
+                    (event.value == 0 or event.value == 1)  # key up or down, no repeat
+                ):
+                    self._maybe_get_next_client(key_code=event.code, key_down=(event.value == 1))
 
         device.close()
 

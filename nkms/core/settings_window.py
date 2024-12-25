@@ -1,9 +1,7 @@
-from typing import Optional
-
 from evdev.ecodes import ecodes
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QKeyEvent, QKeySequence
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QWidget,
     QPushButton,
@@ -37,6 +35,7 @@ class SettingsWindow(QWidget):
         self.waiting_for_keys = False
 
         self.setWindowTitle("NKMS Settings")
+        self.setWindowIcon(QIcon.fromTheme("nkms"))
         base_layout = QVBoxLayout()
         mode_layout = QHBoxLayout()
         mode_label = QLabel("Mode:")

@@ -1,5 +1,6 @@
 nkms (0.1.1) unstable; urgency=medium
 
+  * Add logo
   * Allow custom switch hotkeys
 
  -- Nicholas Yoder <nicholasyoder@proton.me>  Mon, 0 Jan 2025 00:00:00 +0000

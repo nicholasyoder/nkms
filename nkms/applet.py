@@ -26,10 +26,7 @@ class NkmsQt(QObject):
             sys.exit(1)
 
     def initialize(self):
-        # TODO: load icon theme from qt5ctl settings file
-        QIcon.setThemeName('Papirus')
-        icon = QIcon.fromTheme("application-x-executable")
-        self.tray_icon = QSystemTrayIcon(icon, self)
+        self.tray_icon = QSystemTrayIcon(QIcon.fromTheme("nkms"), self)
 
         self.tray_menu = QMenu()
         show_action = self.tray_menu.addAction("Settings")

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="500"
+   height="500"
+   viewBox="0 0 132.29167 132.29167"
+   version="1.1"
+   id="svg2849"
+   sodipodi:docname="nkms.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   inkscape:export-filename="nkms.png"
+   inkscape:export-xdpi="9.2159996"
+   inkscape:export-ydpi="9.2159996"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview2851"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="true"
+     inkscape:zoom="1.0771772"
+     inkscape:cx="163.85419"
+     inkscape:cy="224.1971"
+     inkscape:window-width="1920"
+     inkscape:window-height="1058"
+     inkscape:window-x="1920"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <inkscape:grid
+       type="xygrid"
+       id="grid3217"
+       originx="0"
+       originy="0" />
+  </sodipodi:namedview>
+  <defs
+     id="defs2846">
+    <marker
+       style="overflow:visible"
+       id="marker11281"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Arrow2"
+       markerWidth="7.7"
+       markerHeight="5.6"
+       viewBox="0 0 7.7 5.6"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.7)"
+         d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
+         id="path11279" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Arrow2"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Arrow2"
+       markerWidth="3"
+       markerHeight="5"
+       viewBox="0 0 7.7 5.6"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="none">
+      <path
+         transform="scale(0.7)"
+         d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
+         id="arrow2L" />
+    </marker>
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="26.458332,30.427083"
+       up_right_point="105.83333,30.427083"
+       down_left_point="-26.458335,109.80208"
+       down_right_point="158.75,109.80208"
+       id="path-effect6252"
+       is_visible="true"
+       lpeversion="1"
+       deform_type="perspective"
+       horizontal_mirror="false"
+       vertical_mirror="false"
+       overflow_perspective="false" />
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="23.8125,23.8125"
+       up_right_point="108.47917,23.8125"
+       down_left_point="-15.875,119.0625"
+       down_right_point="148.16667,119.0625"
+       id="path-effect6104"
+       is_visible="true"
+       lpeversion="1"
+       deform_type="perspective"
+       horizontal_mirror="false"
+       vertical_mirror="false"
+       overflow_perspective="false" />
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="29.104167,37.041667"
+       up_right_point="103.1875,37.041667"
+       down_left_point="-31.75,116.41667"
+       down_right_point="164.04167,116.41667"
+       id="path-effect6090"
+       is_visible="true"
+       lpeversion="1"
+       deform_type="perspective"
+       horizontal_mirror="false"
+       vertical_mirror="false"
+       overflow_perspective="false" />
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="26.458332,30.427083"
+       up_right_point="105.83333,30.427083"
+       down_left_point="-26.458335,109.80208"
+       down_right_point="158.75,109.80208"
+       id="path-effect6252-9"
+       is_visible="true"
+       lpeversion="1"
+       deform_type="perspective"
+       horizontal_mirror="false"
+       vertical_mirror="false"
+       overflow_perspective="false" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <circle
+       style="fill:#cccccc;fill-opacity:1;stroke:#1a1a1a;stroke-width:10;stroke-dasharray:none;stroke-opacity:1"
+       id="path3999"
+       cy="66.145836"
+       cx="66.145836"
+       r="58.208336" />
+    <path
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:7;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2)"
+       d="M 66.145833,104.24586 V 55.96568 l 0,-16.27818"
+       id="path7053"
+       sodipodi:nodetypes="ccc" />
+    <g
+       id="g7735"
+       transform="translate(0,-3.1750001)">
+      <path
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:7;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2)"
+         d="m 66.145832,113.77083 c 0,0 10e-7,-23.28333 26.458335,-49.741663"
+         id="path7055"
+         sodipodi:nodetypes="cc" />
+    </g>
+    <g
+       id="g7735-4"
+       transform="matrix(-1,0,0,1,132.29167,-3.1749968)">
+      <path
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:7;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2)"
+         d="m 66.145832,113.77083 c 0,0 5e-6,-23.283333 26.458338,-49.741667"
+         id="path7055-5"
+         sodipodi:nodetypes="cc" />
+    </g>
+  </g>
+</svg>

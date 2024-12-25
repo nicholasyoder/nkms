@@ -35,26 +35,33 @@ NKMS can be configured via the GUI or by manually editing the configuration file
 2. Restart the systemd service: `sudo systemctl restart nkms`.
 
 
-## Operation Modes
+## Options
 
-* **Server Mode:**  
-    The server captures keyboard and mouse input and forwards it to the clients.
-    This mode should be enabled **only** on the machine where your physical 
-    keyboard and mouse are plugged in.
-* **Client Mode:**  
-    The client receives input from the server and sends it to the system 
-    through a virtual input device. This mode must be enabled on all machines 
-    you want to control from the server.
-    You must configure the server's IP address or hostname in the client settings.
+* `Mode` Controls whether the daemon is running as `Server` or `Client`
+
+**Server Mode:**  
+Captures keyboard and mouse input and forwards it to the clients.
+This mode should be enabled **only** on the machine where your physical 
+keyboard and mouse are plugged in.
+* `Input Switch Keys` - Default: `Left Meta + Grave (Tilde)`  
+    Hotkey used to switch input between machines in the following order:  
+    - Server
+    - Each client in the order they connected
+    - Back to server again
+* `Bind Address` - Default: `0.0.0.0`  
+    Address to bind to when listening for client connections.
+* `Port` - Default: `4777`  
+    Port to listen for client connections on. The next higher port will also 
+    be used for the actual transfer of events from server to client.  
+
+**Client Mode:**  
+Receives input from the server and sends it to the system 
+through a virtual input device. This mode must be used on all machines 
+you want to control from the server.
+* `Server` - Blank by default. **Must be configured by user.**  
+    IP Address or hostname of the server machine
+* `Port` - Default: `4777`  
+    Port to connect to the server on. The next higher port will also be used for 
+    the actual transfer of events from server to client.  
 
 **Important:** Ensure all machines are configured to use the same port number.
-
-
-## Usage
-
-Press the right control key to switch input between machines.
-The order is server, then each client in the order they connected,
-then back to the server.
-
-The hotkey is currently hardcoded to the right control key,
-but this will be configurable in a future release.

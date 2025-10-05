@@ -9,9 +9,9 @@ class NkmsSettings:
         # Defaults
         self.mode = "Client"
         self.client_server = ""
-        self.client_port = "4777"
+        self.client_port = 4777
         self.server_address = "0.0.0.0"
-        self.server_port = "4777"
+        self.server_port = 4777
         self.server_key1 = 125
         self.server_key2 = 41
         # Load saved values

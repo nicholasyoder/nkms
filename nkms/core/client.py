@@ -113,13 +113,16 @@ class NkmsClient:
 
     def process_data(self, data):
         for line in data.split("\n"):
+            if not (stripped_line := line.strip()):  # Skip empty lines
+                continue
+
             try:
-                j_data = json.loads(line)
+                j_data = json.loads(stripped_line)
                 self.ui.write(j_data[0], j_data[1], j_data[2])
                 self.ui.syn()
-            except json.decoder.JSONDecodeError:
-                print('JSON decode failed')
-                self.running = False
+            except (json.decoder.JSONDecodeError, IndexError) as e:
+                print(f'Decode failed for data {stripped_line} due to: {e!s}')
+                continue
 
     def stop(self):
         self.running = False
@@ -129,8 +132,3 @@ class NkmsClient:
 if __name__ == '__main__':
     nkms_client = NkmsClient()
     nkms_client.run()
-
-
-
-
-

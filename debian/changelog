@@ -1,3 +1,11 @@
+nkms (0.3) unstable; urgency=medium
+
+  * Fix issue where some hotkey events passed through to the client
+  * Improve handling of data decode failure.
+
+ -- Nicholas Yoder <nicholasyoder@proton.me>  Wed, 14 Jan 2026 18:30:00 +0000
+
+
 nkms (0.2) unstable; urgency=medium
 
   * Add logo

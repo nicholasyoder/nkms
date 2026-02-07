@@ -51,15 +51,22 @@ class NkmsClient:
                 except socket.timeout:
                     print('Keep-alive ping timed out.')
                     self.stop_events_listener()
+                except OSError as e:
+                    print(f'Connection error during keep-alive: {e}')
+                    self.stop_events_listener()
 
             else: # do pings to check if server is online
                 try:
                     sock.send_string_to(string='ping', to=self.server_addr_port)
                     if (data := sock.receive_string()) != 'pong':
                         print(f'Unexpected reply from server ping: {data}')
-                        time.sleep(5)
+                        time.sleep(2)
                         continue
                 except socket.timeout:
+                    continue
+                except OSError as e:
+                    print(f'Connection error: {e}')
+                    time.sleep(2)
                     continue
 
                 # Got a response from server ping. start listening for events
@@ -74,9 +81,10 @@ class NkmsClient:
         try:
             sock.send_string_to(string='get devices', to=self.server_addr_port)
             data = sock.receive_string(buffer_size=50000)
-        except socket.timeout:
-            print('Failed to get capabilities from server.')
+        except OSError as e:
+            print(f'Failed to get capabilities from server: {e}')
             return
+
         # Setup UInput device with capabilities from server
         self.ui = UInput(
             events=self.parse_capabilities(data),
@@ -90,7 +98,7 @@ class NkmsClient:
         # Tell the server we're ready for events
         sock.send_string_to(string='initialized', to=self.server_addr_port)
         sock.close()
-        print("Started events thread.")
+        print(f'Successfully connected to {self.server_addr_port}')
 
     def stop_events_listener(self):
         """Stop listen for events thread."""

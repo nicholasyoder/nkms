@@ -9,4 +9,4 @@ cleanup() {
 
 trap cleanup EXIT
 
-exec /usr/bin/python3 "/usr/lib/python3/dist-packages/nkms/daemon.py"
+exec /usr/bin/python3 -u "/usr/lib/python3/dist-packages/nkms/daemon.py"

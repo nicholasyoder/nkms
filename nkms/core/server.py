@@ -2,7 +2,7 @@ from typing import Final
 
 from evdev import InputDevice, list_devices, ecodes
 from json import dumps as json_dumps
-from time import time
+from time import sleep, time
 from threading import Event, Lock, Thread
 
 from nkms.core.event_handler import EventHandler
@@ -92,7 +92,13 @@ class NkmsServer:
 
     def listen_for_client_data(self, address, port):
         sock = UdpSocket(timeout=2)
-        sock.bind((address, port))
+        while self.running:
+            try:
+                sock.bind((address, port))
+                break
+            except OSError as e:
+                print(f'Failed to bind to {address}:{port}: {e}. Retrying in 2 seconds...')
+                sleep(2)
         print(f"Listening for clients on port {port}")
         while self.running:
             self.maybe_drop_inactive_clients()

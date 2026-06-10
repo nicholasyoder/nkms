@@ -1,2 +1,4 @@
-PyQt6
-evdev
+PyQt6; sys_platform == "linux"
+evdev; sys_platform == "linux"
+pyobjc-framework-Quartz; sys_platform == "darwin"
+pyobjc-framework-ApplicationServices; sys_platform == "darwin"

@@ -1,11 +1,69 @@
+import sys
+import os
+import configparser
 from typing import Any
 
-from PyQt6.QtCore import QSettings
+if sys.platform == 'darwin':
+    _CONFIG_PATH = os.path.expanduser('~/.config/nkms/nkms.conf')
+    _USE_QT = False
+else:
+    _CONFIG_PATH = '/etc/nkms/nkms.conf'
+    _USE_QT = True
+
+
+class _ConfigParserAdapter:
+    """QSettings-compatible adapter backed by configparser (macOS only).
+
+    sync() reads from disk when clean, writes to disk when dirty — matching
+    the QSettings call pattern used by NkmsSettings.load() and .save().
+    Top-level keys (no '/') live in [General] to match QSettings INI format.
+    """
+
+    def __init__(self, path: str):
+        self._path = path
+        self._cp = configparser.ConfigParser()
+        self._dirty = False
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        self._cp.read(path)
+
+    def value(self, key: str, default=None):
+        section, option = self._split_key(key)
+        try:
+            return self._cp.get(section, option)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            return default
+
+    def setValue(self, key: str, value) -> None:
+        section, option = self._split_key(key)
+        if not self._cp.has_section(section):
+            self._cp.add_section(section)
+        self._cp.set(section, option, str(value))
+        self._dirty = True
+
+    def sync(self) -> None:
+        if self._dirty:
+            with open(self._path, 'w') as f:
+                self._cp.write(f)
+            self._dirty = False
+        else:
+            self._cp.clear()
+            self._cp.read(self._path)
+
+    @staticmethod
+    def _split_key(key: str) -> tuple[str, str]:
+        if '/' in key:
+            section, option = key.split('/', 1)
+            return section, option
+        return 'General', key
 
 
 class NkmsSettings:
     def __init__(self):
-        self.settings = QSettings("/etc/nkms/nkms.conf", QSettings.Format.IniFormat)
+        if _USE_QT:
+            from PyQt6.QtCore import QSettings
+            self.settings = QSettings(_CONFIG_PATH, QSettings.Format.IniFormat)
+        else:
+            self.settings = _ConfigParserAdapter(_CONFIG_PATH)
         # Defaults
         self.mode = "Client"
         self.client_server = ""
@@ -28,7 +86,7 @@ class NkmsSettings:
         self.server_key2 = int(self.settings.value("server/key2", self.server_key2))
 
     def save(self):
-        for key, value in self.get_settings_dict():
+        for key, value in self.get_settings_dict().items():
             self.settings.setValue(key, value)
         self.settings.sync()
 

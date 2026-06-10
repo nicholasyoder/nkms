@@ -3,8 +3,7 @@ import json
 import threading
 import time
 
-from evdev import UInput
-
+from nkms.core.virtual_input import VirtualInput
 from nkms.core.constants import FALLBACK_DEVICE_CAPABILITIES
 from nkms.core.settings import NkmsSettings
 from nkms.utils.udp_socket import UdpSocket
@@ -14,7 +13,7 @@ class NkmsClient:
     def __init__(self):
         self.settings = NkmsSettings()
         self.running = False
-        self.ui: UInput | None = None
+        self.ui: VirtualInput | None = None
         self.server_addr_port: tuple = ()
         self.active = False
         self.event_thread: threading.Thread | None = None
@@ -85,11 +84,8 @@ class NkmsClient:
             print(f'Failed to get capabilities from server: {e}')
             return
 
-        # Setup UInput device with capabilities from server
-        self.ui = UInput(
-            events=self.parse_capabilities(data),
-            name='NetKMSwitch Keyboard and Mouse',
-        )
+        # Setup virtual input device with capabilities from server
+        self.ui = VirtualInput(self.parse_capabilities(data))
         # Start events thread
         self.active = True
         self.event_thread = threading.Thread(target=self.listen_for_events)

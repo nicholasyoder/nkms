@@ -155,7 +155,7 @@ class MacOSVirtualInput:
         # EV_MSC (4) — ignored
 
     def syn(self) -> None:
-        self._flush()
+        pass  # flush is triggered by write(EV_SYN=0, ...) in the event stream
 
     def close(self) -> None:
         pass

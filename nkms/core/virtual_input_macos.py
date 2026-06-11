@@ -158,6 +158,8 @@ class MacOSVirtualInput:
             self._flush()
         elif type == EV_KEY:
             if code in (_BTN_LEFT, _BTN_RIGHT, _BTN_MIDDLE, _BTN_SIDE, _BTN_EXTRA):
+                if value == 2:  # ignore auto-repeat for mouse buttons
+                    return
                 self._flush()  # apply any pending movement before the click lands
                 self._post_mouse_button(code, bool(value))
             else:
@@ -248,8 +250,6 @@ class MacOSVirtualInput:
             move_type = Quartz.kCGEventMouseMoved
             btn_num = Quartz.kCGMouseButtonLeft
         event = Quartz.CGEventCreateMouseEvent(self._source, move_type, new_pos, btn_num)
-        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventDeltaX, int(dx))
-        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventDeltaY, int(dy))
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_scroll(self, v: int, h: int) -> None:

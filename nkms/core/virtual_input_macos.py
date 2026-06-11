@@ -6,6 +6,18 @@ from ApplicationServices import AXIsProcessTrusted
 
 from nkms.core.constants import EV_SYN, EV_KEY, EV_REL
 
+# Linux evdev modifier key codes → (macOS virtual key code, CGEvent flag mask)
+_MODIFIER_FLAGS: dict[int, tuple[int, int]] = {
+    29:  (59, Quartz.kCGEventFlagMaskControl),      # KEY_LEFTCTRL
+    97:  (62, Quartz.kCGEventFlagMaskControl),      # KEY_RIGHTCTRL
+    42:  (56, Quartz.kCGEventFlagMaskShift),        # KEY_LEFTSHIFT
+    54:  (60, Quartz.kCGEventFlagMaskShift),        # KEY_RIGHTSHIFT
+    56:  (55, Quartz.kCGEventFlagMaskCommand),       # KEY_LEFTALT  → kVK_Command
+    100: (54, Quartz.kCGEventFlagMaskCommand),      # KEY_RIGHTALT → kVK_RightCommand
+    125: (58, Quartz.kCGEventFlagMaskAlternate),    # KEY_LEFTMETA → kVK_Option
+    126: (61, Quartz.kCGEventFlagMaskAlternate),    # KEY_RIGHTMETA → kVK_RightOption
+}
+
 # Linux evdev key code → macOS virtual key code
 # Sources: linux/input-event-codes.h and HIToolbox/Events.h
 _KEY_MAP: dict[int, int] = {
@@ -64,7 +76,7 @@ _KEY_MAP: dict[int, int] = {
     53:  44,   # KEY_SLASH      → kVK_ANSI_Slash
     54:  60,   # KEY_RIGHTSHIFT → kVK_RightShift
     55:  67,   # KEY_KPASTERISK → kVK_ANSI_KeypadMultiply
-    56:  58,   # KEY_LEFTALT    → kVK_Option
+    56:  55,   # KEY_LEFTALT    → kVK_Command
     57:  49,   # KEY_SPACE      → kVK_Space
     58:  57,   # KEY_CAPSLOCK   → kVK_CapsLock
     59:  122,  # KEY_F1         → kVK_F1
@@ -97,7 +109,7 @@ _KEY_MAP: dict[int, int] = {
     96:  76,   # KEY_KPENTER    → kVK_ANSI_KeypadEnter
     97:  62,   # KEY_RIGHTCTRL  → kVK_RightControl
     98:  75,   # KEY_KPSLASH    → kVK_ANSI_KeypadDivide
-    100: 61,   # KEY_RIGHTALT   → kVK_RightOption
+    100: 54,   # KEY_RIGHTALT   → kVK_RightCommand
     102: 115,  # KEY_HOME       → kVK_Home
     103: 126,  # KEY_UP         → kVK_UpArrow
     104: 116,  # KEY_PAGEUP     → kVK_PageUp
@@ -108,8 +120,8 @@ _KEY_MAP: dict[int, int] = {
     109: 121,  # KEY_PAGEDOWN   → kVK_PageDown
     110: 114,  # KEY_INSERT     → kVK_Help (macOS has no Insert key)
     111: 117,  # KEY_DELETE     → kVK_ForwardDelete
-    125: 55,   # KEY_LEFTMETA   → kVK_Command
-    126: 54,   # KEY_RIGHTMETA  → kVK_RightCommand
+    125: 58,   # KEY_LEFTMETA   → kVK_Option
+    126: 61,   # KEY_RIGHTMETA  → kVK_RightOption
 }
 
 # evdev BTN_* codes for mouse buttons
@@ -134,6 +146,7 @@ class MacOSVirtualInput:
         self._pending_scroll_v: int = 0
         self._pending_scroll_h: int = 0
         self._btn_pressed: set[int] = set()
+        self._active_flags: int = 0  # accumulated CGEvent modifier flags
 
     def write(self, type: int, code: int, value: int) -> None:
         if type == EV_SYN:
@@ -171,10 +184,24 @@ class MacOSVirtualInput:
             self._pending_scroll_h = 0
 
     def _post_key(self, linux_code: int, key_down: bool) -> None:
+        mod = _MODIFIER_FLAGS.get(linux_code)
+        if mod is not None:
+            mac_vk, flag = mod
+            if key_down:
+                self._active_flags |= flag
+            else:
+                self._active_flags &= ~flag
+            event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, key_down)
+            Quartz.CGEventSetFlags(event, self._active_flags)
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
+            return
+
         mac_vk = _KEY_MAP.get(linux_code)
         if mac_vk is None:
             return
         event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, key_down)
+        if self._active_flags:
+            Quartz.CGEventSetFlags(event, self._active_flags)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_mouse_button(self, btn_code: int, pressed: bool) -> None:
@@ -212,6 +239,6 @@ class MacOSVirtualInput:
 
     def _post_scroll(self, v: int, h: int) -> None:
         event = Quartz.CGEventCreateScrollWheelEvent(
-            None, Quartz.kCGScrollEventUnitPixel, 2, v, h
+            None, Quartz.kCGScrollEventUnitLine, 2, v * 5, h * 5
         )
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)

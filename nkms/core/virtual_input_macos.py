@@ -153,6 +153,7 @@ class MacOSVirtualInput:
             self._flush()
         elif type == EV_KEY:
             if code in (_BTN_LEFT, _BTN_RIGHT, _BTN_MIDDLE, _BTN_SIDE, _BTN_EXTRA):
+                self._flush()  # apply any pending movement before the click lands
                 self._post_mouse_button(code, bool(value))
             else:
                 self._post_key(code, bool(value))
@@ -188,10 +189,15 @@ class MacOSVirtualInput:
         if mod is not None:
             mac_vk, flag = mod
             if key_down:
+                if self._active_flags & flag:
+                    return  # skip repeat events for modifiers
                 self._active_flags |= flag
             else:
                 self._active_flags &= ~flag
-            event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, key_down)
+            # Modifier keys must use kCGEventFlagsChanged so macOS's internal
+            # modifier-state machine updates correctly; KeyDown/Up leaves it stuck.
+            event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, False)
+            Quartz.CGEventSetType(event, Quartz.kCGEventFlagsChanged)
             Quartz.CGEventSetFlags(event, self._active_flags)
             Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
             return
@@ -200,8 +206,9 @@ class MacOSVirtualInput:
         if mac_vk is None:
             return
         event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, key_down)
-        if self._active_flags:
-            Quartz.CGEventSetFlags(event, self._active_flags)
+        # Always set flags explicitly to prevent CGEventCreateKeyboardEvent from
+        # leaving default flags (e.g. kCGEventFlagMaskSecondaryFn) on some VK codes.
+        Quartz.CGEventSetFlags(event, self._active_flags)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_mouse_button(self, btn_code: int, pressed: bool) -> None:

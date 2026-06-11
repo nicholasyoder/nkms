@@ -147,6 +147,11 @@ class MacOSVirtualInput:
         self._pending_scroll_h: int = 0
         self._btn_pressed: set[int] = set()
         self._active_flags: int = 0  # accumulated CGEvent modifier flags
+        # A single persistent source ensures macOS tracks button state (and drag
+        # continuity) across all synthesised events. With source=None each call
+        # gets a fresh throwaway source, so mouseDragged events look unrelated to
+        # the preceding mouseDown and gesture recognition breaks.
+        self._source = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
 
     def write(self, type: int, code: int, value: int) -> None:
         if type == EV_SYN:
@@ -196,7 +201,7 @@ class MacOSVirtualInput:
                 self._active_flags &= ~flag
             # Modifier keys must use kCGEventFlagsChanged so macOS's internal
             # modifier-state machine updates correctly; KeyDown/Up leaves it stuck.
-            event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, False)
+            event = Quartz.CGEventCreateKeyboardEvent(self._source, mac_vk, False)
             Quartz.CGEventSetType(event, Quartz.kCGEventFlagsChanged)
             Quartz.CGEventSetFlags(event, self._active_flags)
             Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
@@ -205,14 +210,14 @@ class MacOSVirtualInput:
         mac_vk = _KEY_MAP.get(linux_code)
         if mac_vk is None:
             return
-        event = Quartz.CGEventCreateKeyboardEvent(None, mac_vk, key_down)
+        event = Quartz.CGEventCreateKeyboardEvent(self._source, mac_vk, key_down)
         # Always set flags explicitly to prevent CGEventCreateKeyboardEvent from
         # leaving default flags (e.g. kCGEventFlagMaskSecondaryFn) on some VK codes.
         Quartz.CGEventSetFlags(event, self._active_flags)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_mouse_button(self, btn_code: int, pressed: bool) -> None:
-        pos = Quartz.CGEventGetLocation(Quartz.CGEventCreate(None))
+        pos = Quartz.CGEventGetLocation(Quartz.CGEventCreate(self._source))
         if btn_code == _BTN_LEFT:
             event_type = Quartz.kCGEventLeftMouseDown if pressed else Quartz.kCGEventLeftMouseUp
             btn_num = Quartz.kCGMouseButtonLeft
@@ -226,11 +231,12 @@ class MacOSVirtualInput:
             self._btn_pressed.add(btn_code)
         else:
             self._btn_pressed.discard(btn_code)
-        event = Quartz.CGEventCreateMouseEvent(None, event_type, pos, btn_num)
+        event = Quartz.CGEventCreateMouseEvent(self._source, event_type, pos, btn_num)
+        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventClickState, 1)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_mouse_move(self, dx: float, dy: float) -> None:
-        current = Quartz.CGEventGetLocation(Quartz.CGEventCreate(None))
+        current = Quartz.CGEventGetLocation(Quartz.CGEventCreate(self._source))
         new_pos = Quartz.CGPoint(current.x + dx, current.y + dy)
         if _BTN_LEFT in self._btn_pressed:
             move_type = Quartz.kCGEventLeftMouseDragged
@@ -241,11 +247,13 @@ class MacOSVirtualInput:
         else:
             move_type = Quartz.kCGEventMouseMoved
             btn_num = Quartz.kCGMouseButtonLeft
-        event = Quartz.CGEventCreateMouseEvent(None, move_type, new_pos, btn_num)
+        event = Quartz.CGEventCreateMouseEvent(self._source, move_type, new_pos, btn_num)
+        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventDeltaX, int(dx))
+        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventDeltaY, int(dy))
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_scroll(self, v: int, h: int) -> None:
         event = Quartz.CGEventCreateScrollWheelEvent(
-            None, Quartz.kCGScrollEventUnitLine, 2, v * 5, h * 5
+            self._source, Quartz.kCGScrollEventUnitLine, 2, v * 5, h * 5
         )
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)

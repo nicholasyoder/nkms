@@ -1,6 +1,7 @@
 import sys
 assert sys.platform == 'darwin', "virtual_input_macos only runs on macOS"
 
+import time
 import Quartz
 from ApplicationServices import AXIsProcessTrusted
 
@@ -138,6 +139,14 @@ _REL_HWHEEL = 6
 _REL_WHEEL  = 8
 
 
+def _double_click_interval() -> float:
+    try:
+        import AppKit
+        return AppKit.NSEvent.doubleClickInterval()
+    except Exception:
+        return 0.5
+
+
 class MacOSVirtualInput:
     def __init__(self, capabilities: dict):
         # capabilities unused — CGEvent needs no pre-declaration
@@ -147,6 +156,10 @@ class MacOSVirtualInput:
         self._pending_scroll_h: int = 0
         self._btn_pressed: set[int] = set()
         self._active_flags: int = 0  # accumulated CGEvent modifier flags
+        self._dbl_click_interval: float = _double_click_interval()
+        self._last_click_time: dict[int, float] = {}
+        self._click_count: dict[int, int] = {}
+        self._pending_click_count: dict[int, int] = {}  # count to use on release
         # A single persistent source ensures macOS tracks button state (and drag
         # continuity) across all synthesised events. With source=None each call
         # gets a fresh throwaway source, so mouseDragged events look unrelated to
@@ -231,10 +244,20 @@ class MacOSVirtualInput:
             btn_num = btn_code - _BTN_LEFT  # 2=middle, 3=side, 4=extra
         if pressed:
             self._btn_pressed.add(btn_code)
+            now = time.monotonic()
+            last = self._last_click_time.get(btn_code, 0.0)
+            if now - last <= self._dbl_click_interval:
+                count = self._click_count.get(btn_code, 1) + 1
+            else:
+                count = 1
+            self._click_count[btn_code] = count
+            self._last_click_time[btn_code] = now
+            self._pending_click_count[btn_code] = count
         else:
             self._btn_pressed.discard(btn_code)
+            count = self._pending_click_count.get(btn_code, 1)
         event = Quartz.CGEventCreateMouseEvent(self._source, event_type, pos, btn_num)
-        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventClickState, 1)
+        Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventClickState, count)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
     def _post_mouse_move(self, dx: float, dy: float) -> None:

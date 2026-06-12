@@ -260,9 +260,34 @@ class MacOSVirtualInput:
         Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventClickState, count)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
+    @staticmethod
+    def _display_union() -> tuple[float, float, float, float]:
+        """Return (min_x, min_y, max_x, max_y) covering all active displays."""
+        _, displays, count = Quartz.CGGetActiveDisplayList(32, None, None)
+        if not count:
+            b = Quartz.CGDisplayBounds(Quartz.CGMainDisplayID())
+            return (b.origin.x, b.origin.y, b.origin.x + b.size.width - 1, b.origin.y + b.size.height - 1)
+
+        min_x = min_y = float('inf')
+        max_x = max_y = float('-inf')
+        for i in range(count):
+            b = Quartz.CGDisplayBounds(displays[i])
+            min_x = min(min_x, b.origin.x)
+            min_y = min(min_y, b.origin.y)
+            max_x = max(max_x, b.origin.x + b.size.width - 1)
+            max_y = max(max_y, b.origin.y + b.size.height - 1)
+        return (min_x, min_y, max_x, max_y)
+
     def _post_mouse_move(self, dx: float, dy: float) -> None:
-        current = Quartz.CGEventGetLocation(Quartz.CGEventCreate(self._source))
-        new_pos = Quartz.CGPoint(current.x + dx, current.y + dy)
+        min_x, min_y, max_x, max_y = self._display_union()
+
+        current_pos = Quartz.CGEventGetLocation(Quartz.CGEventCreate(self._source))
+
+        # Keep the tracked position within display bounds so it can't drift past the screen edge
+        new_x = max(min_x, min(max_x, current_pos.x + dx))
+        new_y = max(min_y, min(max_y, current_pos.y + dy))
+        new_pos = Quartz.CGPoint(new_x, new_y)
+
         if _BTN_LEFT in self._btn_pressed:
             move_type = Quartz.kCGEventLeftMouseDragged
             btn_num = Quartz.kCGMouseButtonLeft

@@ -139,6 +139,10 @@ _REL_HWHEEL = 6
 _REL_WHEEL  = 8
 
 
+def _display_reconfig_callback(display, flags, userInfo) -> None:
+    userInfo._display_dirty = True
+
+
 def _double_click_interval() -> float:
     try:
         import AppKit
@@ -165,6 +169,9 @@ class MacOSVirtualInput:
         # gets a fresh throwaway source, so mouseDragged events look unrelated to
         # the preceding mouseDown and gesture recognition breaks.
         self._source = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+        self._display_dirty: bool = True
+        self._cached_display_bounds: tuple[float, float, float, float] | None = None
+        Quartz.CGDisplayRegisterReconfigurationCallback(_display_reconfig_callback, self)
 
     def write(self, type: int, code: int, value: int) -> None:
         if type == EV_SYN:
@@ -192,7 +199,7 @@ class MacOSVirtualInput:
         pass  # flush is triggered by write(EV_SYN=0, ...) in the event stream
 
     def close(self) -> None:
-        pass
+        Quartz.CGDisplayRemoveReconfigurationCallback(_display_reconfig_callback, self)
 
     def _flush(self) -> None:
         if self._pending_dx or self._pending_dy:
@@ -279,7 +286,10 @@ class MacOSVirtualInput:
         return (min_x, min_y, max_x, max_y)
 
     def _post_mouse_move(self, dx: float, dy: float) -> None:
-        min_x, min_y, max_x, max_y = self._display_union()
+        if self._display_dirty:
+            self._cached_display_bounds = self._display_union()
+            self._display_dirty = False
+        min_x, min_y, max_x, max_y = self._cached_display_bounds  # type: ignore[misc]
 
         current_pos = Quartz.CGEventGetLocation(Quartz.CGEventCreate(self._source))
 

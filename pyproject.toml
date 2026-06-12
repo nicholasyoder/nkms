@@ -9,3 +9,6 @@ version = "0.2"
 authors = [
   { name="Nicholas Yoder", email="nicholasyoder@proton.me" },
 ]
+
+[tool.setuptools.packages.find]
+include = ["nkms*"]

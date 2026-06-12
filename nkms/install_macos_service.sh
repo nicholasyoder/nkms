@@ -2,7 +2,7 @@
 set -e
 
 PYTHON=$(which python3)
-SCRIPT=$(realpath "$(dirname "$0")/macos_client.py")
+SCRIPT=$(realpath "$(dirname "$0")/macos_applet.py")
 PLIST_SRC="$(dirname "$0")/macos_launchagent.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/com.nkms.client.plist"
 

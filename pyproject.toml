@@ -12,3 +12,6 @@ authors = [
 
 [tool.setuptools.packages.find]
 include = ["nkms*"]
+
+[tool.setuptools.package-data]
+nkms = ["logo/nkms.png"]

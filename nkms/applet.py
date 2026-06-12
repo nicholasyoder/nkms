@@ -1,7 +1,7 @@
 import sys
 from typing import Any
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PyQt6.QtGui import QIcon, QCursor
+from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QObject
 from PyQt6.QtDBus import QDBusConnection, QDBusMessage
 
@@ -38,7 +38,8 @@ class NkmsQt(QObject):
         quit_action = self.tray_menu.addAction("Quit")
         quit_action.triggered.connect(QApplication.instance().quit)
 
-        self.tray_icon.activated.connect(self.tray_icon_activated)
+        self.tray_menu.aboutToShow.connect(self._update_menu_state)
+        self.tray_icon.setContextMenu(self.tray_menu)
         self.tray_icon.show()
 
     def call_daemon(self, method: str, args: list[Any] | None = None) -> Any:
@@ -59,17 +60,10 @@ class NkmsQt(QObject):
 
         return reply.arguments()[0] if len(reply.arguments()) == 1 else reply.arguments()
 
-    def tray_icon_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self.show_settings()
-        elif reason == QSystemTrayIcon.ActivationReason.Context:
-            if self.call_daemon('is_running') is True:
-                self.stop_action.setDisabled(False)
-                self.start_action.setDisabled(True)
-            else:
-                self.stop_action.setDisabled(True)
-                self.start_action.setDisabled(False)
-            self.tray_menu.exec(QCursor.pos())
+    def _update_menu_state(self):
+        running = self.call_daemon('is_running') is True
+        self.stop_action.setDisabled(not running)
+        self.start_action.setDisabled(running)
 
     def show_settings(self):
         if not self.settings_window:

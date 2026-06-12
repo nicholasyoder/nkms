@@ -2,4 +2,4 @@ nkms usr/lib/python3/dist-packages/
 etc/* etc/
 usr/* usr/
 README.md /usr/share/doc/nkms/
-logo/nkms.png /usr/share/icons/hicolor/48x48/apps/
+nkms/logo/nkms.png /usr/share/icons/hicolor/48x48/apps/

@@ -1,5 +1,7 @@
 from typing import Final
 
+NKMS_UINPUT_NAME: Final = 'NetKMSwitch Keyboard and Mouse'
+
 EV_SYN: Final = 0
 EV_KEY: Final = 1
 EV_REL: Final = 2

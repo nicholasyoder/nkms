@@ -6,6 +6,7 @@ from json import dumps as json_dumps
 from select import select
 from threading import Lock
 
+from nkms.core.constants import NKMS_UINPUT_NAME
 from nkms.core.settings import NkmsSettings
 from nkms.utils.udp_socket import UdpSocket
 
@@ -37,9 +38,11 @@ class EventHandler:
         self.key1_down = False
         self.key2_down = False
         self.prevented_key1_press = False
+        self.uinput_lock = Lock()
+        self.device_capabilities = device_capabilities
         self.uinput = UInput(
             events=device_capabilities,
-            name='NetKMSwitch Keyboard and Mouse',
+            name=NKMS_UINPUT_NAME,
         )
 
     def add_client(self, client):
@@ -56,6 +59,15 @@ class EventHandler:
                 self.clients.remove(client)
                 if should_get_next:
                     self.get_next_client()
+
+    def update_capabilities(self, capabilities: dict) -> None:
+        """Recreate the local UInput if the given (unioned) capabilities grew."""
+        with self.uinput_lock:
+            if capabilities == self.device_capabilities:
+                return
+            self.device_capabilities = capabilities
+            self.uinput.close()
+            self.uinput = UInput(events=capabilities, name=NKMS_UINPUT_NAME)
 
     def get_next_client(self):
         """Set socket_index to next value to cycle through outputs."""
@@ -100,8 +112,9 @@ class EventHandler:
     def _send_event_to_client(self, event) -> None:
         """Send event to client."""
         if self.client_index == SERVER_CLIENT_INDEX:
-            self.uinput.write_event(event)
-            self.uinput.syn()
+            with self.uinput_lock:
+                self.uinput.write_event(event)
+                self.uinput.syn()
             return
 
         with self.client_lock:  # Protect clients list access
@@ -172,17 +185,23 @@ class EventHandler:
     def handle_events(self, device):
         """Start loop to listen for device's events."""
         device.grab()
-        while self.running:
-            read_ready, _, _ = select([device.fd], [], [], 0.1)  # 0.1 second timeout
-            if not read_ready:
-                continue
+        try:
+            while self.running:
+                read_ready, _, _ = select([device.fd], [], [], 0.1)  # 0.1 second timeout
+                if not read_ready:
+                    continue
 
-            for event in device.read():
-                if not self.running:
-                    break
+                for event in device.read():
+                    if not self.running:
+                        break
 
-                if self._process_event(event):
-                    self._send_event_to_client(event)
+                    if self._process_event(event):
+                        self._send_event_to_client(event)
+        except OSError as e:
+            print(f'Device {device.path} disappeared: {e!s}')
 
-        device.ungrab()
-        device.close()
+        try:
+            device.ungrab()
+            device.close()
+        except OSError:
+            pass  # device is already gone.

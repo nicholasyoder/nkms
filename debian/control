@@ -8,6 +8,6 @@ Homepage: https://github.com/nicholasyoder/nkms
 
 Package: nkms
 Architecture: all
-Depends: ${misc:Depends}, python3-evdev, python3-pyqt6
+Depends: ${misc:Depends}, python3-evdev, python3-pyqt6, python3-pyudev
 Description: Network Keyboard Mouse Switch
  Switch keyboard and mouse input between multiple machines via the network

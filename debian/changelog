@@ -1,3 +1,11 @@
+nkms (0.5) unstable; urgency=medium
+
+  * Support hotplugging input devices on the server
+  * Add client app for macOS
+
+ -- Nicholas Yoder <nicholasyoder@proton.me>  Mon, 24 Aug 2026 19:15:00 +0000
+
+
 nkms (0.4) unstable; urgency=medium
 
   * Properly handle various connection errors.

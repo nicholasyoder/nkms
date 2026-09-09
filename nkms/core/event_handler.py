@@ -55,10 +55,23 @@ class EventHandler:
         """Remove a client from the clients list."""
         with self.client_lock:
             if client in self.clients:
-                should_get_next = self.client_index == self.clients.index(client)
+                removed_index = self.clients.index(client)
                 self.clients.remove(client)
-                if should_get_next:
-                    self.get_next_client()
+                self._adjust_client_index_after_removal(removed_index)
+
+    def _adjust_client_index_after_removal(self, removed_index: int) -> None:
+        """Keep client_index valid/pointing at the same client after a removal.
+
+        Must be called with client_lock held, after the client at removed_index
+        has already been removed from self.clients.
+        """
+        if self.client_index > removed_index:
+            # Everything after removed_index shifted down by one.
+            self.client_index -= 1
+        elif self.client_index == removed_index and self.client_index >= len(self.clients):
+            # The active client was removed and there's nothing left to shift into
+            # its slot (it was the last one) - fall back to the server.
+            self.client_index = SERVER_CLIENT_INDEX
 
     def update_capabilities(self, capabilities: dict) -> None:
         """Recreate the local UInput if the given (unioned) capabilities grew."""
@@ -127,8 +140,9 @@ class EventHandler:
                     )
                 except OSError as e:
                     print(f'Error sending to {client}: {e!s}')
+                    removed_index = self.client_index
                     self.clients.remove(client)
-                    self.get_next_client()
+                    self._adjust_client_index_after_removal(removed_index)
 
     def _make_key1_press_from_event(self, event: InputEvent) -> InputEvent:
         """Create a key1 press event to immediately precede the given event."""
@@ -199,9 +213,11 @@ class EventHandler:
                         self._send_event_to_client(event)
         except OSError as e:
             print(f'Device {device.path} disappeared: {e!s}')
-
-        try:
-            device.ungrab()
-            device.close()
-        except OSError:
-            pass  # device is already gone.
+        finally:
+            # Always release the device, even on an unexpected exception - otherwise
+            # it stays exclusively grabbed with no thread left alive to forward its events.
+            try:
+                device.ungrab()
+                device.close()
+            except OSError:
+                pass  # device is already gone.

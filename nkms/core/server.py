@@ -75,9 +75,13 @@ class NkmsServer:
                 inactive_clients.append(client)
 
         for client in inactive_clients:
-            print(f'Dropping inactive client: {client}')
-            self.activity.pop(client, None)
-            self.event_handler.remove_client(client)
+            self._drop_client(client, 'inactive')
+
+    def _drop_client(self, address: str, reason: str) -> None:
+        """Stop tracking a client and stop forwarding events to it."""
+        print(f'Dropping {reason} client: {address}')
+        self.activity.pop(address, None)
+        self.event_handler.remove_client(address)
 
     def maybe_process_client_data(self, sock: UdpSocket) -> None:
         try:
@@ -99,6 +103,8 @@ class NkmsServer:
             self.activity[address] = time()  # add device address to the activity dict
             self.event_handler.add_client(address)
             print(f"Initialized new client: {address}")
+        elif data == b'disconnect':
+            self._drop_client(address, 'disconnected')
 
     def _add_device(self, device: InputDevice) -> None:
         """Start a reader thread for a device. Caller holds devices_lock."""

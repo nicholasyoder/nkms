@@ -74,6 +74,8 @@ class NkmsClient:
 
     def start_events_listener(self):
         """Start listen for events thread."""
+        if not self.running:
+            return  # stop() was requested while the server ping was in flight.
         print("Starting events thread...")
         sock = UdpSocket(timeout=4)
         # Get device capabilities from server
@@ -128,8 +130,21 @@ class NkmsClient:
                 print(f'Decode failed for data {stripped_line} due to: {e!s}')
                 continue
 
+    def send_disconnect(self):
+        """Tell the server to drop this client immediately instead of waiting for a timeout."""
+        if not self.server_addr_port:
+            return
+        sock = UdpSocket(timeout=1)
+        try:
+            sock.send_string_to(string='disconnect', to=self.server_addr_port)
+        except OSError as e:
+            print(f'Failed to send disconnect to server: {e}')
+        finally:
+            sock.close()
+
     def stop(self):
         self.running = False
+        self.send_disconnect()
         self.stop_events_listener()
 
 

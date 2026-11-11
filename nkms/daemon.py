@@ -35,16 +35,22 @@ class NkmsDaemon(QObject):
 
     @pyqtSlot()
     def stop(self) -> None:
+        self._stop()
+
+    def _stop(self) -> bool:
+        """Stop the running client/server. Returns True if it stopped cleanly."""
         print(f"Stopping NKMS daemon...")
         if not (self.nkms_daemon or self.nkms_thread):
             print('Failed to stop.')
-            return
+            return False
 
         self.nkms_daemon.stop()
         self.nkms_thread.join(timeout=5)
         if self.nkms_thread.is_alive():
             print('Failed to stop.')
-            return
+            return False
+
+        return True
 
     @pyqtSlot(result=bool)
     def is_running(self) -> bool:
@@ -56,6 +62,11 @@ class NkmsDaemon(QObject):
     @pyqtSlot('QVariantMap')
     def save_settings(self, settings_dict: dict[str, Any]) -> None:
         self.settings.save_settings_dict(settings_dict=settings_dict)
+        if self.is_running():
+            # Settings are only read on startup, so restart to apply them.
+            print('Settings changed, restarting to apply them.')
+            if self._stop():
+                self.start()
 
 
 def register_on_dbus(nkms_daemon: NkmsDaemon) -> bool:

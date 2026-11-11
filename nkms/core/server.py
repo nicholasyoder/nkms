@@ -167,17 +167,20 @@ class NkmsServer:
 
     def listen_for_client_data(self, address, port):
         sock = UdpSocket(timeout=2)
-        while self.running:
-            try:
-                sock.bind((address, port))
-                break
-            except OSError as e:
-                print(f'Failed to bind to {address}:{port}: {e}. Retrying in 2 seconds...')
-                sleep(2)
-        print(f"Listening for clients on port {port}")
-        while self.running:
-            self.maybe_drop_inactive_clients()
-            self.maybe_process_client_data(sock)
+        try:
+            while self.running:
+                try:
+                    sock.bind((address, port))
+                    break
+                except OSError as e:
+                    print(f'Failed to bind to {address}:{port}: {e}. Retrying in 2 seconds...')
+                    sleep(2)
+            print(f"Listening for clients on port {port}")
+            while self.running:
+                self.maybe_drop_inactive_clients()
+                self.maybe_process_client_data(sock)
+        finally:
+            sock.close()
 
     def run(self):
         print('Starting NKMS Server ...')
@@ -222,6 +225,11 @@ class NkmsServer:
             threads = list(self.threads)
         for thread in threads:
             thread.join()
+
+        # Reader threads have exited, so nothing is writing to the virtual device any more.
+        if self.event_handler:
+            self.event_handler.close()
+            self.event_handler = None
 
         print('NKMS Server Stopped')
 

@@ -104,3 +104,4 @@ class NkmsSettings:
     def save_settings_dict(self, settings_dict: dict[str, Any]) -> None:
         for key, value in settings_dict.items():
             self.settings.setValue(key, value)
+        self.settings.sync()

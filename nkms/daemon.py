@@ -1,12 +1,19 @@
 import sys
 import threading
-from typing import Any
+import time
+from typing import Any, Final
 
 from PyQt6.QtCore import QObject, pyqtSlot
 from PyQt6.QtDBus import QDBusConnection
 from PyQt6.QtCore import QCoreApplication
 
 from nkms.core.settings import NkmsSettings
+
+# A connected client only notices the server went away when one of its keep-alive pings
+# (sent about once a second) goes unanswered; it then reconnects. If the server restarts
+# faster than that, the client keeps pinging the new server, which answers but doesn't know
+# about it, so it never gets events again. Stay down long enough for a ping to be missed.
+RESTART_GAP: Final = 2.0  # seconds
 
 
 class NkmsDaemon(QObject):
@@ -16,10 +23,15 @@ class NkmsDaemon(QObject):
         self.settings = NkmsSettings()
         self.nkms_thread = None
         self.nkms_daemon = None
+        self._stopped_at: float | None = None
 
     @pyqtSlot()
     def start(self) -> None:
         print(f"Starting NKMS daemon...")
+        if self._stopped_at is not None:
+            remaining = RESTART_GAP - (time.monotonic() - self._stopped_at)
+            if remaining > 0:
+                time.sleep(remaining)  # let connected clients notice the restart.
         self.settings.load()
         if self.settings.mode == "Client":
             print(self.settings.mode)
@@ -50,6 +62,7 @@ class NkmsDaemon(QObject):
             print('Failed to stop.')
             return False
 
+        self._stopped_at = time.monotonic()
         return True
 
     @pyqtSlot(result=bool)

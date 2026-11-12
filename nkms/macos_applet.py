@@ -72,6 +72,10 @@ class NkmsQt(QObject):
 
     def save_settings(self, settings_dict: dict[str, Any]) -> None:
         self.settings.save_settings_dict(settings_dict=settings_dict)
+        if self.is_running():
+            # Settings are only read on startup, so restart to apply them.
+            self.stop_nkms()
+            self.start_nkms()
 
     def start_nkms(self):
         if self.is_running():

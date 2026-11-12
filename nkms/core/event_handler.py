@@ -82,6 +82,13 @@ class EventHandler:
             self.uinput.close()
             self.uinput = UInput(events=capabilities, name=NKMS_UINPUT_NAME)
 
+    def close(self) -> None:
+        """Release the virtual input device and socket. Call after all reader threads have exited."""
+        self.running = False
+        with self.uinput_lock:
+            self.uinput.close()
+        self.sock.close()
+
     def get_next_client(self):
         """Set socket_index to next value to cycle through outputs."""
         if self.client_index >= len(self.clients) - 1:
